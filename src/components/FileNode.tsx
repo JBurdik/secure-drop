@@ -1,5 +1,4 @@
 import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import {
   File,
   FileImage,
@@ -76,12 +75,15 @@ export function FileNode({
       id,
     });
 
-  const style = {
-    position: "absolute" as const,
+  const style: React.CSSProperties = {
+    position: "absolute",
     left: positionX,
     top: positionY,
-    transform: CSS.Translate.toString(transform),
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
     zIndex: isDragging ? 1000 : 1,
+    transition: isDragging ? undefined : "box-shadow 0.2s",
   };
 
   const Icon = getFileIcon(mimeType);
@@ -97,8 +99,8 @@ export function FileNode({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative w-28 select-none rounded-lg border bg-card p-2 shadow-sm transition-all hover:shadow-md",
-        isDragging && "opacity-50 shadow-lg",
+        "group relative w-28 select-none rounded-lg border bg-card p-2 shadow-sm hover:shadow-md",
+        isDragging && "opacity-80 shadow-lg scale-105",
       )}
     >
       {/* Drag handle - the main card body */}
