@@ -62,9 +62,20 @@ export function SpaceCanvas({
       const fileId = active.id as Id<"files">;
       const file = files.find((f) => f._id === fileId);
 
-      if (file && delta) {
-        const newX = Math.max(0, file.positionX + delta.x);
-        const newY = Math.max(0, file.positionY + delta.y);
+      if (file && delta && canvasRef.current) {
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        const cardWidth = 144; // w-36 = 9rem = 144px
+        const cardHeight = 140; // approximate height of card
+
+        // Clamp position within canvas bounds
+        const newX = Math.min(
+          Math.max(0, file.positionX + delta.x),
+          canvasRect.width - cardWidth,
+        );
+        const newY = Math.min(
+          Math.max(0, file.positionY + delta.y),
+          canvasRect.height - cardHeight,
+        );
 
         await updatePosition({
           fileId,
