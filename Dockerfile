@@ -9,11 +9,8 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code (including convex folder)
+# Copy source code (including convex/_generated)
 COPY . .
-
-# Generate Convex types (needed for build)
-RUN npx convex codegen
 
 # Build args for Convex URL (set at build time)
 ARG VITE_CONVEX_URL
