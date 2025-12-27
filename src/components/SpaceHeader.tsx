@@ -22,6 +22,8 @@ import {
   Trash2,
   Clock,
   Upload,
+  Infinity,
+  Lock,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -31,11 +33,14 @@ interface SpaceHeaderProps {
   name: string;
   expiresAt: number;
   allowUploads: boolean;
+  requireAuthForUpload: boolean;
   isOwner: boolean;
   onDelete?: () => void;
 }
 
 function formatTimeRemaining(expiresAt: number): string {
+  if (expiresAt === 0) return "Never";
+
   const remaining = expiresAt - Date.now();
   if (remaining <= 0) return "Expired";
 
@@ -58,6 +63,7 @@ export function SpaceHeader({
   name,
   expiresAt,
   allowUploads,
+  requireAuthForUpload,
   isOwner,
   onDelete,
 }: SpaceHeaderProps) {
@@ -66,10 +72,12 @@ export function SpaceHeader({
   const [showSettings, setShowSettings] = useState(false);
   const [editName, setEditName] = useState(name);
   const [editAllowUploads, setEditAllowUploads] = useState(allowUploads);
+  const [editRequireAuth, setEditRequireAuth] = useState(requireAuthForUpload);
 
   const updateSpace = useMutation(api.spaces.updateSpace);
 
   const shareUrl = `${window.location.origin}/s/${shareId}`;
+  const isInfinite = expiresAt === 0;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(shareUrl);
@@ -82,6 +90,7 @@ export function SpaceHeader({
       spaceId,
       name: editName,
       allowUploads: editAllowUploads,
+      requireAuthForUpload: editAllowUploads ? editRequireAuth : false,
     });
     setShowSettings(false);
   };
@@ -93,7 +102,11 @@ export function SpaceHeader({
           <h1 className="truncate text-lg sm:text-xl font-semibold">{name}</h1>
           <div className="mt-1 flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Clock className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
+              {isInfinite ? (
+                <Infinity className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
+              ) : (
+                <Clock className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
+              )}
               {formatTimeRemaining(expiresAt)}
             </span>
             {allowUploads && (
@@ -101,6 +114,12 @@ export function SpaceHeader({
                 <Upload className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
                 <span className="hidden sm:inline">Uploads allowed</span>
                 <span className="sm:hidden">Uploads</span>
+              </span>
+            )}
+            {requireAuthForUpload && (
+              <span className="flex items-center gap-1">
+                <Lock className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
+                <span className="hidden sm:inline">Auth required</span>
               </span>
             )}
           </div>
@@ -194,6 +213,21 @@ export function SpaceHeader({
                 onCheckedChange={setEditAllowUploads}
               />
             </div>
+            {editAllowUploads && (
+              <div className="flex items-center justify-between pl-4 border-l-2 border-muted">
+                <div className="space-y-0.5">
+                  <Label htmlFor="require-auth">Require login to upload</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Only signed-in users can upload
+                  </p>
+                </div>
+                <Switch
+                  id="require-auth"
+                  checked={editRequireAuth}
+                  onCheckedChange={setEditRequireAuth}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSettings(false)}>

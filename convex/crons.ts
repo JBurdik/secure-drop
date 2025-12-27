@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
+// Run cleanup every hour
 crons.interval(
   "cleanup expired spaces",
   { hours: 1 },

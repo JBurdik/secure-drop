@@ -14,22 +14,65 @@ function generateSpaceId(): string {
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
+// Limits
+const ANON_MAX_SPACES = 3;
+const ANON_MAX_EXPIRATION = 3 * HOUR; // 3 hours for anonymous
+const AUTH_MAX_SPACES = 5;
+const AUTH_MAX_EXPIRATION = 7 * DAY; // 7 days for authenticated (or infinite)
+
 export const createSpace = mutation({
   args: {
     name: v.string(),
     allowUploads: v.boolean(),
-    expiresIn: v.number(),
+    requireAuthForUpload: v.optional(v.boolean()),
+    expiresIn: v.optional(v.number()), // undefined = infinite (auth only)
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
     const userId = user?.userId ?? undefined;
 
-    // Authenticated users can have up to 7 days, anonymous up to 24h
-    const maxExpiration = userId ? 7 * DAY : DAY;
-    const expiresIn = Math.min(args.expiresIn, maxExpiration);
+    // Check space limit
+    if (userId) {
+      const existingSpaces = await ctx.db
+        .query("spaces")
+        .withIndex("by_createdBy", (q) => q.eq("createdBy", userId))
+        .collect();
+
+      const activeSpaces = existingSpaces.filter(
+        (s) => s.expiresAt === 0 || s.expiresAt > Date.now(),
+      );
+      if (activeSpaces.length >= AUTH_MAX_SPACES) {
+        throw new Error(
+          `You can only have ${AUTH_MAX_SPACES} active spaces. Delete one to create a new one.`,
+        );
+      }
+
+      // Check if user already has an infinite space
+      const hasInfinite = activeSpaces.some((s) => s.expiresAt === 0);
+      if (!args.expiresIn && hasInfinite) {
+        throw new Error(
+          "You can only have 1 infinite space. Choose an expiration time.",
+        );
+      }
+    }
+
+    // Anonymous users can't create infinite spaces
+    const isInfinite = !args.expiresIn && userId;
+
+    // Set expiration limits based on auth status
+    let expiresAt: number;
+    if (isInfinite) {
+      expiresAt = 0; // 0 means infinite
+    } else {
+      const maxExpiration = userId ? AUTH_MAX_EXPIRATION : ANON_MAX_EXPIRATION;
+      const expiresIn = Math.min(
+        args.expiresIn || ANON_MAX_EXPIRATION,
+        maxExpiration,
+      );
+      expiresAt = Date.now() + expiresIn;
+    }
 
     const spaceId = generateSpaceId();
-    const expiresAt = Date.now() + expiresIn;
 
     const id = await ctx.db.insert("spaces", {
       spaceId,
@@ -37,9 +80,10 @@ export const createSpace = mutation({
       createdBy: userId,
       expiresAt,
       allowUploads: args.allowUploads,
+      requireAuthForUpload: args.requireAuthForUpload ?? false,
     });
 
-    return { id, spaceId };
+    return { id, spaceId, isAuthenticated: !!userId };
   },
 });
 
@@ -55,10 +99,17 @@ export const getSpace = query({
       .first();
 
     if (!space) return null;
-    if (space.expiresAt < Date.now()) return null;
+    // expiresAt === 0 means infinite
+    if (space.expiresAt !== 0 && space.expiresAt < Date.now()) return null;
 
-    // Check ownership - either logged in user created it or anonymous (localStorage check on client)
+    // Check ownership
     const isOwner = userId ? space.createdBy === userId : false;
+
+    // Get folders for this space
+    const folders = await ctx.db
+      .query("folders")
+      .withIndex("by_spaceId", (q) => q.eq("spaceId", space._id))
+      .collect();
 
     return {
       _id: space._id,
@@ -66,7 +117,15 @@ export const getSpace = query({
       name: space.name,
       expiresAt: space.expiresAt,
       allowUploads: space.allowUploads,
+      requireAuthForUpload: space.requireAuthForUpload ?? false,
       isOwner,
+      isAuthenticated: !!userId,
+      folders: folders.map((f) => ({
+        _id: f._id,
+        name: f.name,
+        positionX: f.positionX,
+        positionY: f.positionY,
+      })),
     };
   },
 });
@@ -89,6 +148,7 @@ export const getSpaceFiles = query({
           mimeType: file.mimeType,
           positionX: file.positionX ?? 100,
           positionY: file.positionY ?? 100,
+          folderId: file.folderId,
           url,
         };
       }),
@@ -123,10 +183,10 @@ export const getUserSpaces = query({
       .withIndex("by_createdBy", (q) => q.eq("createdBy", userId))
       .collect();
 
-    // Filter out expired spaces
+    // Filter out expired spaces (expiresAt === 0 means infinite)
     const now = Date.now();
     return spaces
-      .filter((s) => s.expiresAt > now)
+      .filter((s) => s.expiresAt === 0 || s.expiresAt > now)
       .map((s) => ({
         _id: s._id,
         spaceId: s.spaceId,
@@ -134,6 +194,41 @@ export const getUserSpaces = query({
         expiresAt: s.expiresAt,
         allowUploads: s.allowUploads,
       }));
+  },
+});
+
+export const getUserSpaceCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getSession(ctx);
+    const userId = user?.userId ?? undefined;
+
+    if (!userId) {
+      return {
+        count: 0,
+        max: ANON_MAX_SPACES,
+        isAuthenticated: false,
+        hasInfinite: false,
+      };
+    }
+
+    const spaces = await ctx.db
+      .query("spaces")
+      .withIndex("by_createdBy", (q) => q.eq("createdBy", userId))
+      .collect();
+
+    const now = Date.now();
+    const activeSpaces = spaces.filter(
+      (s) => s.expiresAt === 0 || s.expiresAt > now,
+    );
+    const hasInfinite = activeSpaces.some((s) => s.expiresAt === 0);
+
+    return {
+      count: activeSpaces.length,
+      max: AUTH_MAX_SPACES,
+      isAuthenticated: true,
+      hasInfinite,
+    };
   },
 });
 
@@ -163,6 +258,16 @@ export const deleteSpace = mutation({
       await ctx.db.delete(file._id);
     }
 
+    // Delete all folders in space
+    const folders = await ctx.db
+      .query("folders")
+      .withIndex("by_spaceId", (q) => q.eq("spaceId", args.spaceId))
+      .collect();
+
+    for (const folder of folders) {
+      await ctx.db.delete(folder._id);
+    }
+
     await ctx.db.delete(args.spaceId);
   },
 });
@@ -172,6 +277,7 @@ export const updateSpace = mutation({
     spaceId: v.id("spaces"),
     name: v.optional(v.string()),
     allowUploads: v.optional(v.boolean()),
+    requireAuthForUpload: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
@@ -186,10 +292,16 @@ export const updateSpace = mutation({
       throw new Error("Not authorized");
     }
 
-    const updates: { name?: string; allowUploads?: boolean } = {};
+    const updates: {
+      name?: string;
+      allowUploads?: boolean;
+      requireAuthForUpload?: boolean;
+    } = {};
     if (args.name !== undefined) updates.name = args.name;
     if (args.allowUploads !== undefined)
       updates.allowUploads = args.allowUploads;
+    if (args.requireAuthForUpload !== undefined)
+      updates.requireAuthForUpload = args.requireAuthForUpload;
 
     await ctx.db.patch(args.spaceId, updates);
   },

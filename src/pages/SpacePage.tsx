@@ -146,6 +146,7 @@ export default function SpacePage() {
             name={space.name}
             expiresAt={space.expiresAt}
             allowUploads={space.allowUploads}
+            requireAuthForUpload={space.requireAuthForUpload}
             isOwner={isOwner}
             onDelete={handleDeleteSpace}
           />

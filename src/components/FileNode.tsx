@@ -30,8 +30,16 @@ interface FileNodeProps {
   positionY: number;
   url: string | null;
   isOwner: boolean;
+
   onDelete?: () => void;
   onPreview?: () => void;
+}
+
+interface FileNodePreviewProps {
+  name: string;
+  size: number;
+  mimeType: string;
+  url: string | null;
 }
 
 function formatBytes(bytes: number): string {
@@ -57,6 +65,41 @@ function getFileIcon(mimeType: string) {
   return File;
 }
 
+// Presentational component for DragOverlay
+export function FileNodePreview({
+  name,
+  size,
+  mimeType,
+  url,
+}: FileNodePreviewProps) {
+  const Icon = getFileIcon(mimeType);
+  const isImage = mimeType.startsWith("image/");
+
+  return (
+    <div className="w-28 sm:w-36 select-none rounded-lg border bg-card p-2 sm:p-3 shadow-xl scale-105 opacity-95 rotate-2">
+      <div className="flex flex-col items-center gap-1 sm:gap-2">
+        {isImage && url ? (
+          <img
+            src={url}
+            alt={name}
+            className="h-14 w-14 sm:h-20 sm:w-20 rounded object-cover"
+          />
+        ) : (
+          <div className="flex h-14 w-14 sm:h-20 sm:w-20 items-center justify-center rounded bg-muted">
+            <Icon className="h-7 w-7 sm:h-10 sm:w-10 text-muted-foreground" />
+          </div>
+        )}
+        <span className="w-full truncate text-center text-xs sm:text-sm font-medium">
+          {name}
+        </span>
+        <span className="text-[10px] sm:text-xs text-muted-foreground">
+          {formatBytes(size)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function FileNode({
   id,
   name,
@@ -70,20 +113,16 @@ export function FileNode({
   onPreview,
 }: FileNodeProps) {
   const [showThumbnail, setShowThumbnail] = useState(false);
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id,
-    });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id,
+  });
 
   const style: React.CSSProperties = {
     position: "absolute",
     left: positionX,
     top: positionY,
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
     zIndex: isDragging ? 1000 : 1,
-    transition: isDragging ? undefined : "box-shadow 0.2s",
+    transition: "box-shadow 0.2s, opacity 0.15s",
   };
 
   const Icon = getFileIcon(mimeType);
@@ -100,7 +139,7 @@ export function FileNode({
       style={style}
       className={cn(
         "group relative w-28 sm:w-36 select-none rounded-lg border bg-card p-2 sm:p-3 shadow-sm hover:shadow-md",
-        isDragging && "opacity-80 shadow-lg scale-105",
+        isDragging && "opacity-40",
       )}
     >
       {/* Drag handle - the main card body */}

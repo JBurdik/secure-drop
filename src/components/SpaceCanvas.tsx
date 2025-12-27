@@ -2,15 +2,18 @@ import { useCallback, useState, useRef } from "react";
 import {
   DndContext,
   type DragEndEvent,
+  type DragStartEvent,
   MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
+  DragOverlay,
+  pointerWithin,
 } from "@dnd-kit/core";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { FileNode } from "./FileNode";
+import { FileNode, FileNodePreview } from "./FileNode";
 import { FilePreviewModal } from "./FilePreviewModal";
 import { Upload, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,17 +47,29 @@ export function SpaceCanvas({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [activeFile, setActiveFile] = useState<FileData | null>(null);
 
   const updatePosition = useMutation(api.spaces.updateFilePosition);
   const deleteFile = useMutation(api.files.deleteFile);
 
   const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: { distance: 5 },
+    activationConstraint: { distance: 3 },
   });
   const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: { delay: 200, tolerance: 5 },
+    activationConstraint: { delay: 150, tolerance: 5 },
   });
   const sensors = useSensors(mouseSensor, touchSensor);
+
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const fileId = event.active.id as Id<"files">;
+      const file = files.find((f) => f._id === fileId);
+      if (file) {
+        setActiveFile(file);
+      }
+    },
+    [files],
+  );
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -62,9 +77,10 @@ export function SpaceCanvas({
       const fileId = active.id as Id<"files">;
       const file = files.find((f) => f._id === fileId);
 
+      setActiveFile(null);
+
       if (file && delta && canvasRef.current) {
         const canvasRect = canvasRef.current.getBoundingClientRect();
-        // Responsive card sizes: w-28 (112px) on mobile, w-36 (144px) on desktop
         const isMobile = window.innerWidth < 640;
         const cardWidth = isMobile ? 112 : 144;
         const cardHeight = isMobile ? 110 : 140;
@@ -81,8 +97,8 @@ export function SpaceCanvas({
 
         await updatePosition({
           fileId,
-          positionX: newX,
-          positionY: newY,
+          positionX: Math.round(newX),
+          positionY: Math.round(newY),
         });
       }
     },
@@ -127,7 +143,6 @@ export function SpaceCanvas({
       try {
         for (let i = 0; i < selectedFiles.length; i++) {
           const file = selectedFiles[i];
-          // Place files in center-ish area with offset
           await onUpload(file, 100 + i * 30, 100 + i * 30);
         }
       } finally {
@@ -175,7 +190,12 @@ export function SpaceCanvas({
         onChange={handleFileSelect}
       />
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <div
           ref={canvasRef}
           onDrop={handleDrop}
@@ -240,6 +260,22 @@ export function SpaceCanvas({
             />
           ))}
         </div>
+
+        <DragOverlay
+          dropAnimation={{
+            duration: 200,
+            easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
+          }}
+        >
+          {activeFile ? (
+            <FileNodePreview
+              name={activeFile.name}
+              size={activeFile.size}
+              mimeType={activeFile.mimeType}
+              url={activeFile.url}
+            />
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       <FilePreviewModal

@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
 import type * as files from "../files.js";
+import type * as folders from "../folders.js";
 import type * as http from "../http.js";
 import type * as spaces from "../spaces.js";
 
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   cleanup: typeof cleanup;
   crons: typeof crons;
   files: typeof files;
+  folders: typeof folders;
   http: typeof http;
   spaces: typeof spaces;
 }>;

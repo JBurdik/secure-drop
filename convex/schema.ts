@@ -8,10 +8,19 @@ export default defineSchema({
     createdBy: v.optional(v.string()), // Better Auth user ID (string)
     expiresAt: v.number(),
     allowUploads: v.boolean(),
+    requireAuthForUpload: v.optional(v.boolean()), // Only authenticated users can upload
   })
     .index("by_spaceId", ["spaceId"])
     .index("by_createdBy", ["createdBy"])
     .index("by_expiresAt", ["expiresAt"]),
+
+  folders: defineTable({
+    spaceId: v.id("spaces"),
+    name: v.string(),
+    positionX: v.number(),
+    positionY: v.number(),
+    createdBy: v.optional(v.string()),
+  }).index("by_spaceId", ["spaceId"]),
 
   files: defineTable({
     storageId: v.id("_storage"),
@@ -21,6 +30,7 @@ export default defineSchema({
     expiresAt: v.number(),
     uploadedBy: v.optional(v.string()), // Better Auth user ID (string)
     spaceId: v.optional(v.id("spaces")),
+    folderId: v.optional(v.id("folders")), // File can be inside a folder
     positionX: v.optional(v.number()),
     positionY: v.optional(v.number()),
     // Legacy fields
@@ -30,6 +40,7 @@ export default defineSchema({
     uploadRequestId: v.optional(v.id("files")),
   })
     .index("by_spaceId", ["spaceId"])
+    .index("by_folderId", ["folderId"])
     .index("by_expiresAt", ["expiresAt"])
     .index("by_shareId", ["shareId"]),
 });
