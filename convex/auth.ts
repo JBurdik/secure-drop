@@ -38,7 +38,11 @@ export const createAuth = (
     logger: { disabled: optionsOnly },
   });
 
-// Helper to get session in mutations/queries
+// Helper to get session in mutations/queries - returns null if not authenticated
 export const getSession = async (ctx: GenericCtx<DataModel>) => {
-  return authComponent.getAuthUser(ctx);
+  try {
+    return await authComponent.getAuthUser(ctx);
+  } catch {
+    return null;
+  }
 };
