@@ -102,17 +102,17 @@ export default function SpacePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <div className="mb-4">
+      <div className="mx-auto max-w-6xl px-2 sm:px-4 py-4 sm:py-6">
+        <div className="mb-3 sm:mb-4">
           <Button variant="ghost" size="sm" asChild>
             <Link to="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Home
+              <span className="hidden sm:inline">Home</span>
             </Link>
           </Button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <SpaceHeader
             spaceId={space._id}
             shareId={space.spaceId}

@@ -64,8 +64,10 @@ export function SpaceCanvas({
 
       if (file && delta && canvasRef.current) {
         const canvasRect = canvasRef.current.getBoundingClientRect();
-        const cardWidth = 144; // w-36 = 9rem = 144px
-        const cardHeight = 140; // approximate height of card
+        // Responsive card sizes: w-28 (112px) on mobile, w-36 (144px) on desktop
+        const isMobile = window.innerWidth < 640;
+        const cardWidth = isMobile ? 112 : 144;
+        const cardHeight = isMobile ? 110 : 140;
 
         // Clamp position within canvas bounds
         const newX = Math.min(
@@ -180,7 +182,7 @@ export function SpaceCanvas({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           className={cn(
-            "relative min-h-[500px] w-full rounded-lg border-2 border-dashed bg-muted/30 transition-colors",
+            "relative min-h-[400px] sm:min-h-[500px] w-full rounded-lg border-2 border-dashed bg-muted/30 transition-colors overflow-hidden",
             isDraggingOver && canUpload && "border-primary bg-primary/5",
             !canUpload && "border-muted",
           )}

@@ -88,31 +88,39 @@ export function SpaceHeader({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-lg border bg-card p-3 sm:p-4">
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-semibold">{name}</h1>
-          <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
+          <h1 className="truncate text-lg sm:text-xl font-semibold">{name}</h1>
+          <div className="mt-1 flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" />
+              <Clock className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
               {formatTimeRemaining(expiresAt)}
             </span>
             {allowUploads && (
               <span className="flex items-center gap-1">
-                <Upload className="h-3.5 w-3.5" />
-                Uploads allowed
+                <Upload className="h-3 sm:h-3.5 w-3 sm:w-3.5" />
+                <span className="hidden sm:inline">Uploads allowed</span>
+                <span className="sm:hidden">Uploads</span>
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCopy}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopy}
+            className="flex-1 sm:flex-none"
+          >
             {copied ? (
-              <Check className="mr-2 h-4 w-4" />
+              <Check className="sm:mr-2 h-4 w-4" />
             ) : (
-              <Copy className="mr-2 h-4 w-4" />
+              <Copy className="sm:mr-2 h-4 w-4" />
             )}
-            {copied ? "Copied!" : "Copy Link"}
+            <span className="hidden sm:inline">
+              {copied ? "Copied!" : "Copy Link"}
+            </span>
           </Button>
 
           <Button variant="outline" size="icon" onClick={() => setShowQR(true)}>

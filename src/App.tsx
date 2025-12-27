@@ -54,12 +54,12 @@ function App() {
       </header>
 
       {/* Hero */}
-      <main className="mx-auto max-w-6xl px-4 py-16">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:py-16">
         <div className="flex flex-col items-center text-center">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             Share files simply
           </h1>
-          <p className="mt-4 max-w-lg text-lg text-muted-foreground">
+          <p className="mt-4 max-w-lg text-base sm:text-lg text-muted-foreground">
             Create a space, drop your files, share the link. That's it.
           </p>
           <Button
@@ -107,7 +107,7 @@ function App() {
         )}
 
         {/* Features */}
-        <div className="mt-16 grid gap-8 sm:grid-cols-3">
+        <div className="mt-12 sm:mt-16 grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-3">
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
               <span className="text-2xl">🔗</span>

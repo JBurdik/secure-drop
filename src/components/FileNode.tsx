@@ -99,7 +99,7 @@ export function FileNode({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative w-36 select-none rounded-lg border bg-card p-3 shadow-sm hover:shadow-md",
+        "group relative w-28 sm:w-36 select-none rounded-lg border bg-card p-2 sm:p-3 shadow-sm hover:shadow-md",
         isDragging && "opacity-80 shadow-lg scale-105",
       )}
     >
@@ -109,17 +109,17 @@ export function FileNode({
         {...attributes}
         className="cursor-grab active:cursor-grabbing"
       >
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-1 sm:gap-2">
           {showThumbnail && isImage && url ? (
             <img
               src={url}
               alt={name}
-              className="h-20 w-20 rounded object-cover"
+              className="h-14 w-14 sm:h-20 sm:w-20 rounded object-cover"
               onError={() => setShowThumbnail(false)}
             />
           ) : (
             <div
-              className="flex h-20 w-20 items-center justify-center rounded bg-muted cursor-pointer"
+              className="flex h-14 w-14 sm:h-20 sm:w-20 items-center justify-center rounded bg-muted cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
                 if (isImage && url) {
@@ -129,13 +129,13 @@ export function FileNode({
                 }
               }}
             >
-              <Icon className="h-10 w-10 text-muted-foreground" />
+              <Icon className="h-7 w-7 sm:h-10 sm:w-10 text-muted-foreground" />
             </div>
           )}
-          <span className="w-full truncate text-center text-sm font-medium">
+          <span className="w-full truncate text-center text-xs sm:text-sm font-medium">
             {name}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[10px] sm:text-xs text-muted-foreground">
             {formatBytes(size)}
           </span>
         </div>
