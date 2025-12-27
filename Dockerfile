@@ -12,9 +12,11 @@ RUN npm ci
 # Copy source code (including convex/_generated)
 COPY . .
 
-# Build args for Convex URL (set at build time)
+# Build args for Convex URLs (set at build time)
 ARG VITE_CONVEX_URL
+ARG VITE_CONVEX_SITE_URL
 ENV VITE_CONVEX_URL=$VITE_CONVEX_URL
+ENV VITE_CONVEX_SITE_URL=$VITE_CONVEX_SITE_URL
 
 # Build the app
 RUN npm run build

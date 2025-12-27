@@ -37,6 +37,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_CONVEX_URL=${VITE_CONVEX_URL:-http://localhost:3210}
+        - VITE_CONVEX_SITE_URL=${VITE_CONVEX_SITE_URL:-http://localhost:3211}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     restart: unless-stopped
