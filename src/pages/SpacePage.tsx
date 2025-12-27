@@ -3,14 +3,17 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { SpaceCanvas } from "@/components/SpaceCanvas";
 import { SpaceHeader } from "@/components/SpaceHeader";
+import { UserMenu } from "@/components/UserMenu";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Sun, Moon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { getStoredSpaces, removeSpace } from "@/lib/spaces";
+import { useTheme } from "@/lib/theme";
 
 export default function SpacePage() {
   const { spaceId } = useParams<{ spaceId: string }>();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const space = useQuery(api.spaces.getSpace, { spaceId: spaceId || "" });
   const files = useQuery(
@@ -102,12 +105,36 @@ export default function SpacePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <Link to="/" className="text-xl font-bold">
+            SecureDrop
+          </Link>
+          <nav className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="h-9 w-9"
+            >
+              {theme === "light" ? (
+                <Moon className="h-4 w-4" />
+              ) : (
+                <Sun className="h-4 w-4" />
+              )}
+            </Button>
+            <UserMenu />
+          </nav>
+        </div>
+      </header>
+
       <div className="mx-auto max-w-6xl px-2 sm:px-4 py-4 sm:py-6">
         <div className="mb-3 sm:mb-4">
           <Button variant="ghost" size="sm" asChild>
             <Link to="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Home</span>
+              <span className="hidden sm:inline">Back</span>
             </Link>
           </Button>
         </div>

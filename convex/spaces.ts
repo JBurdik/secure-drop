@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getSession } from "./auth";
 
 function generateSpaceId(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -20,8 +21,11 @@ export const createSpace = mutation({
     expiresIn: v.number(),
   },
   handler: async (ctx, args) => {
-    // Max 7 days expiration
-    const maxExpiration = 7 * DAY;
+    const user = await getSession(ctx);
+    const userId = user?.userId ?? undefined;
+
+    // Authenticated users can have up to 7 days, anonymous up to 24h
+    const maxExpiration = userId ? 7 * DAY : DAY;
     const expiresIn = Math.min(args.expiresIn, maxExpiration);
 
     const spaceId = generateSpaceId();
@@ -30,7 +34,7 @@ export const createSpace = mutation({
     const id = await ctx.db.insert("spaces", {
       spaceId,
       name: args.name,
-      createdBy: undefined,
+      createdBy: userId,
       expiresAt,
       allowUploads: args.allowUploads,
     });
@@ -42,6 +46,9 @@ export const createSpace = mutation({
 export const getSpace = query({
   args: { spaceId: v.string() },
   handler: async (ctx, args) => {
+    const user = await getSession(ctx);
+    const userId = user?.userId ?? undefined;
+
     const space = await ctx.db
       .query("spaces")
       .withIndex("by_spaceId", (q) => q.eq("spaceId", args.spaceId))
@@ -50,13 +57,16 @@ export const getSpace = query({
     if (!space) return null;
     if (space.expiresAt < Date.now()) return null;
 
+    // Check ownership - either logged in user created it or anonymous (localStorage check on client)
+    const isOwner = userId ? space.createdBy === userId : false;
+
     return {
       _id: space._id,
       spaceId: space.spaceId,
       name: space.name,
       expiresAt: space.expiresAt,
       allowUploads: space.allowUploads,
-      isOwner: false, // Ownership is handled by localStorage on client
+      isOwner,
     };
   },
 });
@@ -102,18 +112,45 @@ export const updateFilePosition = mutation({
 
 export const getUserSpaces = query({
   args: {},
-  handler: async () => {
-    // No auth - return empty array (spaces are tracked in localStorage)
-    return [];
+  handler: async (ctx) => {
+    const user = await getSession(ctx);
+    const userId = user?.userId ?? undefined;
+
+    if (!userId) return [];
+
+    const spaces = await ctx.db
+      .query("spaces")
+      .withIndex("by_createdBy", (q) => q.eq("createdBy", userId))
+      .collect();
+
+    // Filter out expired spaces
+    const now = Date.now();
+    return spaces
+      .filter((s) => s.expiresAt > now)
+      .map((s) => ({
+        _id: s._id,
+        spaceId: s.spaceId,
+        name: s.name,
+        expiresAt: s.expiresAt,
+        allowUploads: s.allowUploads,
+      }));
   },
 });
 
 export const deleteSpace = mutation({
   args: { spaceId: v.id("spaces") },
   handler: async (ctx, args) => {
+    const user = await getSession(ctx);
+    const userId = user?.userId ?? undefined;
+
     const space = await ctx.db.get(args.spaceId);
 
     if (!space) throw new Error("Space not found");
+
+    // Only owner can delete (or anonymous spaces can be deleted via localStorage check on client)
+    if (space.createdBy && space.createdBy !== userId) {
+      throw new Error("Not authorized");
+    }
 
     // Delete all files in space
     const files = await ctx.db
@@ -137,9 +174,17 @@ export const updateSpace = mutation({
     allowUploads: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const user = await getSession(ctx);
+    const userId = user?.userId ?? undefined;
+
     const space = await ctx.db.get(args.spaceId);
 
     if (!space) throw new Error("Space not found");
+
+    // Only owner can update (or anonymous spaces can be updated via localStorage check on client)
+    if (space.createdBy && space.createdBy !== userId) {
+      throw new Error("Not authorized");
+    }
 
     const updates: { name?: string; allowUploads?: boolean } = {};
     if (args.name !== undefined) updates.name = args.name;

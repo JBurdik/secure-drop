@@ -5,6 +5,7 @@ import { CreateSpaceDialog } from "@/components/CreateSpaceDialog";
 import { Plus, FolderOpen, Clock, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { getStoredSpaces, type StoredSpace } from "@/lib/spaces";
+import { UserMenu } from "@/components/UserMenu";
 
 function formatTimeRemaining(expiresAt: number): string {
   const remaining = expiresAt - Date.now();
@@ -49,6 +50,7 @@ function App() {
                 <Sun className="h-4 w-4" />
               )}
             </Button>
+            <UserMenu />
           </nav>
         </div>
       </header>

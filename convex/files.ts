@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import { getSession } from "./auth";
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -20,34 +20,19 @@ export const uploadFile = mutation({
     positionY: v.number(),
   },
   handler: async (ctx, args) => {
+    const user = await getSession(ctx);
+    const userId = user?.userId ?? undefined;
+
     // Check space exists and allows uploads
     const space = await ctx.db.get(args.spaceId);
     if (!space) throw new Error("Space not found");
     if (space.expiresAt < Date.now()) throw new Error("Space has expired");
 
     // Check if current user is owner or if uploads are allowed
-    const identity = await ctx.auth.getUserIdentity();
-    let isOwner = false;
-
-    if (identity && space.createdBy) {
-      const user = await ctx.db
-        .query("users")
-        .filter((q) => q.eq(q.field("email"), identity.email))
-        .first();
-      isOwner = user?._id === space.createdBy;
-    }
+    const isOwner = userId && space.createdBy === userId;
 
     if (!isOwner && !space.allowUploads) {
       throw new Error("Uploads not allowed in this space");
-    }
-
-    let userId: Id<"users"> | undefined;
-    if (identity) {
-      const user = await ctx.db
-        .query("users")
-        .filter((q) => q.eq(q.field("email"), identity.email))
-        .first();
-      userId = user?._id;
     }
 
     const fileId = await ctx.db.insert("files", {
@@ -69,6 +54,9 @@ export const uploadFile = mutation({
 export const deleteFile = mutation({
   args: { fileId: v.id("files") },
   handler: async (ctx, args) => {
+    const user = await getSession(ctx);
+    const userId = user?.userId ?? undefined;
+
     const file = await ctx.db.get(args.fileId);
     if (!file) throw new Error("File not found");
 
@@ -77,19 +65,9 @@ export const deleteFile = mutation({
     if (!space) throw new Error("Space not found");
 
     // Check if current user is space owner
-    const identity = await ctx.auth.getUserIdentity();
-
-    if (space.createdBy) {
-      if (!identity) throw new Error("Not authenticated");
-
-      const user = await ctx.db
-        .query("users")
-        .filter((q) => q.eq(q.field("email"), identity.email))
-        .first();
-
-      if (!user || user._id !== space.createdBy) {
-        throw new Error("Not authorized");
-      }
+    // For anonymous spaces (no createdBy), allow deletion via client-side localStorage check
+    if (space.createdBy && space.createdBy !== userId) {
+      throw new Error("Not authorized");
     }
 
     await ctx.storage.delete(file.storageId);
