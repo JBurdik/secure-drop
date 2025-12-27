@@ -11,4 +11,3 @@ dist
 *.log
 npm-debug.log*
 .DS_Store
-convex/_generated
