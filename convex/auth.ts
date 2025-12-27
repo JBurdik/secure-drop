@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
-import { DataModel } from "./_generated/dataModel";
+import type { DataModel } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import authConfig from "./auth.config";
 
