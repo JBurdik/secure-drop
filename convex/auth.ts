@@ -7,7 +7,7 @@ import authConfig from "./auth.config";
 import { crossDomain } from "./patches/crossDomain";
 
 const siteUrl = process.env.SITE_URL || "http://localhost:5173";
-const convexUrl = process.env.CONVEX_URL || "http://localhost:3210";
+const convexUrl = process.env.CONVEX_SITE_URL || "http://localhost:3211";
 const authSecret =
   process.env.BETTER_AUTH_SECRET || "development-secret-change-in-production";
 

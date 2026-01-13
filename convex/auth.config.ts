@@ -5,5 +5,9 @@ import type { AuthConfig } from "convex/server";
 //   process.env.SITE_URL || "https://site.secure-drop.burdych.net";
 
 export default {
-  providers: [getAuthConfigProvider()],
+  providers: [
+    getAuthConfigProvider({
+      basePath: "/http",
+    }),
+  ],
 } satisfies AuthConfig;
