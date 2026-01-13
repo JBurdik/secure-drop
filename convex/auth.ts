@@ -29,7 +29,6 @@ export const createAuth = (
   betterAuth({
     secret: authSecret,
     baseURL: convexUrl,
-    basePath: "/http",
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
@@ -37,7 +36,7 @@ export const createAuth = (
     },
     trustedOrigins,
     plugins: [
-      convex({ authConfig, options: { basePath: "/http", trustedOrigins } }),
+      convex({ authConfig, options: { trustedOrigins } }),
       crossDomain({ siteUrl, trustedOrigins }),
     ],
     logger: { disabled: optionsOnly },
