@@ -1,9 +1,10 @@
 import { betterAuth } from "better-auth";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
-import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
+import { convex } from "@convex-dev/better-auth/plugins";
 import type { DataModel } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import authConfig from "./auth.config";
+import { crossDomain } from "./patches/crossDomain";
 
 const siteUrl = process.env.SITE_URL || "http://localhost:5173";
 const convexUrl = process.env.CONVEX_URL || "http://localhost:3210";
@@ -35,7 +36,7 @@ export const createAuth = (
       requireEmailVerification: false,
     },
     trustedOrigins,
-    plugins: [convex({ authConfig, basePath: "/" }), crossDomain({ siteUrl })],
+    plugins: [convex({ authConfig }), crossDomain({ siteUrl, trustedOrigins })],
     logger: { disabled: optionsOnly },
   });
 
