@@ -36,7 +36,10 @@ export const createAuth = (
       requireEmailVerification: false,
     },
     trustedOrigins,
-    plugins: [convex({ authConfig, options: {basePath: "/http", trustedOrigins, } })], crossDomain({ siteUrl, trustedOrigins })],
+    plugins: [
+      convex({ authConfig, options: { basePath: "/http", trustedOrigins } }),
+      crossDomain({ siteUrl, trustedOrigins }),
+    ],
     logger: { disabled: optionsOnly },
   });
 
