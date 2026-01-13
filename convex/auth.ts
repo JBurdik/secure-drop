@@ -28,13 +28,14 @@ export const createAuth = (
   betterAuth({
     secret: authSecret,
     baseURL: convexUrl,
+    basePath: "/",
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
     },
     trustedOrigins,
-    plugins: [convex({ authConfig }), crossDomain({ siteUrl })],
+    plugins: [convex({ authConfig, basePath: "/" }), crossDomain({ siteUrl })],
     logger: { disabled: optionsOnly },
   });
 
