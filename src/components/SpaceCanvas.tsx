@@ -13,6 +13,7 @@ import {
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { useOptimisticUpdateFilePosition } from "@/hooks/useOptimisticFilePosition";
 import { FileNode, FileNodePreview } from "./FileNode";
 import { FilePreviewModal } from "./FilePreviewModal";
 import { Upload, Plus } from "lucide-react";
@@ -30,6 +31,7 @@ interface FileData {
 }
 
 interface SpaceCanvasProps {
+  spaceId: Id<"spaces">;
   files: FileData[];
   isOwner: boolean;
   allowUploads: boolean;
@@ -37,6 +39,7 @@ interface SpaceCanvasProps {
 }
 
 export function SpaceCanvas({
+  spaceId,
   files,
   isOwner,
   allowUploads,
@@ -49,7 +52,7 @@ export function SpaceCanvas({
   const [uploading, setUploading] = useState(false);
   const [activeFile, setActiveFile] = useState<FileData | null>(null);
 
-  const updatePosition = useMutation(api.spaces.updateFilePosition);
+  const updatePosition = useOptimisticUpdateFilePosition(spaceId);
   const deleteFile = useMutation(api.files.deleteFile);
 
   const mouseSensor = useSensor(MouseSensor, {

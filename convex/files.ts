@@ -24,7 +24,7 @@ export const uploadFile = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?.userId ?? undefined;
+    const userId = user?._id ?? undefined;
 
     // Check file size limit
     if (args.size > MAX_FILE_SIZE) {
@@ -81,7 +81,7 @@ export const deleteFile = mutation({
   args: { fileId: v.id("files") },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?.userId ?? undefined;
+    const userId = user?._id ?? undefined;
 
     const file = await ctx.db.get(args.fileId);
     if (!file) throw new Error("File not found");

@@ -23,13 +23,13 @@ A simple, private file sharing application built with React, Convex, and Tailwin
 ### 1. Install dependencies
 
 ```bash
-npm install
+bun install
 ```
 
 ### 2. Set up Convex
 
 ```bash
-npx convex dev
+bunx convex dev
 ```
 
 This will prompt you to create a Convex project and set up your `.env.local` file.
@@ -37,7 +37,7 @@ This will prompt you to create a Convex project and set up your `.env.local` fil
 ### 3. Start the development server
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 ### 4. Open your browser

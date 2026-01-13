@@ -3,12 +3,14 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { SpaceCanvas } from "@/components/SpaceCanvas";
 import { SpaceHeader } from "@/components/SpaceHeader";
+import { UploadProgressList } from "@/components/UploadProgress";
 import { UserMenu } from "@/components/UserMenu";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Sun, Moon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { getStoredSpaces, removeSpace } from "@/lib/spaces";
 import { useTheme } from "@/lib/theme";
+import { useFileUpload } from "@/hooks/useFileUpload";
 
 export default function SpacePage() {
   const { spaceId } = useParams<{ spaceId: string }>();
@@ -21,9 +23,10 @@ export default function SpacePage() {
     space?._id ? { spaceId: space._id } : "skip",
   );
 
-  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const uploadFile = useMutation(api.files.uploadFile);
   const deleteSpace = useMutation(api.spaces.deleteSpace);
+  const { uploads, uploadWithProgress, clearUpload } = useFileUpload(
+    space?._id
+  );
 
   // Check if this is an anonymous space owned by current user (via localStorage)
   const isLocalOwner = useMemo(() => {
@@ -34,32 +37,6 @@ export default function SpacePage() {
 
   // User is owner if backend says so OR if they have it in localStorage
   const isOwner = (space?.isOwner ?? false) || isLocalOwner;
-
-  const handleUpload = useCallback(
-    async (file: File, x: number, y: number) => {
-      if (!space?._id) return;
-
-      const uploadUrl = await generateUploadUrl();
-
-      const response = await fetch(uploadUrl, {
-        method: "POST",
-        body: file,
-      });
-
-      const { storageId } = await response.json();
-
-      await uploadFile({
-        storageId,
-        name: file.name,
-        size: file.size,
-        mimeType: file.type || "application/octet-stream",
-        spaceId: space._id,
-        positionX: x,
-        positionY: y,
-      });
-    },
-    [space?._id, generateUploadUrl, uploadFile],
-  );
 
   const handleDeleteSpace = useCallback(async () => {
     if (!space?._id) return;
@@ -152,13 +129,16 @@ export default function SpacePage() {
           />
 
           <SpaceCanvas
+            spaceId={space._id}
             files={files || []}
             isOwner={isOwner}
             allowUploads={space.allowUploads}
-            onUpload={handleUpload}
+            onUpload={uploadWithProgress}
           />
         </div>
       </div>
+
+      <UploadProgressList uploads={uploads} onClear={clearUpload} />
     </div>
   );
 }

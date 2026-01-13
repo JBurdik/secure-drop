@@ -1,13 +1,13 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json bun.lock* ./
 
 # Install dependencies
-RUN npm ci
+RUN bun install --frozen-lockfile
 
 # Copy source code (including convex/_generated)
 COPY . .
@@ -19,17 +19,15 @@ ENV VITE_CONVEX_URL=$VITE_CONVEX_URL
 ENV VITE_CONVEX_SITE_URL=$VITE_CONVEX_SITE_URL
 
 # Build the app
-RUN npm run build
+RUN bun run build
 
 # Production stage - simple static server
-FROM node:20-alpine
+FROM oven/bun:1-alpine
 
 WORKDIR /app
-
-RUN npm install -g serve
 
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD ["bun", "x", "serve", "-s", "dist", "-l", "3000"]

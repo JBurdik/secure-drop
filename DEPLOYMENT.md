@@ -52,7 +52,7 @@ CONVEX_SELF_HOSTED_URL=https://api.securedrop.yourdomain.com
 CONVEX_SELF_HOSTED_ADMIN_KEY=<your-admin-key>
 
 # Deploy
-npx convex deploy
+bunx convex deploy
 ```
 
 ## Data Backup

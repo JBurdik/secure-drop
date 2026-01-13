@@ -29,7 +29,7 @@ export const createSpace = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?.userId ?? undefined;
+    const userId = user?._id ?? undefined;
 
     // Check space limit
     if (userId) {
@@ -91,7 +91,7 @@ export const getSpace = query({
   args: { spaceId: v.string() },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?.userId ?? undefined;
+    const userId = user?._id ?? undefined;
 
     const space = await ctx.db
       .query("spaces")
@@ -174,7 +174,7 @@ export const getUserSpaces = query({
   args: {},
   handler: async (ctx) => {
     const user = await getSession(ctx);
-    const userId = user?.userId ?? undefined;
+    const userId = user?._id ?? undefined;
 
     if (!userId) return [];
 
@@ -201,7 +201,7 @@ export const getUserSpaceCount = query({
   args: {},
   handler: async (ctx) => {
     const user = await getSession(ctx);
-    const userId = user?.userId ?? undefined;
+    const userId = user?._id ?? undefined;
 
     if (!userId) {
       return {
@@ -236,7 +236,7 @@ export const deleteSpace = mutation({
   args: { spaceId: v.id("spaces") },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?.userId ?? undefined;
+    const userId = user?._id ?? undefined;
 
     const space = await ctx.db.get(args.spaceId);
 
@@ -281,7 +281,7 @@ export const updateSpace = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?.userId ?? undefined;
+    const userId = user?._id ?? undefined;
 
     const space = await ctx.db.get(args.spaceId);
 
