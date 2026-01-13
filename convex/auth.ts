@@ -1,10 +1,9 @@
 import { betterAuth } from "better-auth";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
-import { convex } from "@convex-dev/better-auth/plugins";
+import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import type { DataModel } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import authConfig from "./auth.config";
-import { crossDomain } from "./patches/crossDomain";
 
 const siteUrl = process.env.SITE_URL || "http://localhost:5173";
 const convexUrl = process.env.CONVEX_SITE_URL || "http://localhost:3211";
@@ -36,8 +35,12 @@ export const createAuth = (
     },
     trustedOrigins,
     plugins: [
-      convex({ authConfig, options: { trustedOrigins } }),
-      crossDomain({ siteUrl, trustedOrigins }),
+      convex({
+        authConfig,
+        options: { trustedOrigins },
+        jwksRotateOnTokenGenerationError: true, // Regenerate JWKS if invalid
+      }),
+      crossDomain({ siteUrl }),
     ],
     logger: { disabled: optionsOnly },
   });
