@@ -14,6 +14,7 @@ import type * as crons from "../crons.js";
 import type * as files from "../files.js";
 import type * as folders from "../folders.js";
 import type * as http from "../http.js";
+import type * as patches_crossDomain from "../patches/crossDomain.js";
 import type * as spaces from "../spaces.js";
 
 import type {
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   folders: typeof folders;
   http: typeof http;
+  "patches/crossDomain": typeof patches_crossDomain;
   spaces: typeof spaces;
 }>;
 

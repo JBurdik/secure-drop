@@ -1,4 +1,4 @@
-import { internalMutation } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
 
 // Cleanup expired spaces and their files
 export const cleanupExpiredSpaces = internalMutation({
@@ -69,5 +69,43 @@ export const cleanupExpiredSpaces = internalMutation({
       deletedFiles,
       deletedFolders,
     };
+  },
+});
+
+// Delete legacy auth tables that are no longer used
+// These are from @convex-dev/auth which was replaced by @convex-dev/better-auth
+export const deleteLegacyAuthTables = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const legacyTables = [
+      "authAccounts",
+      "authRateLimits",
+      "authRefreshTokens",
+      "authSessions",
+      "authVerificationCodes",
+      "authVerifiers",
+      "presence",
+      "users",
+    ];
+
+    const results: Record<string, number> = {};
+
+    for (const tableName of legacyTables) {
+      let count = 0;
+      try {
+        // Query all documents from the table
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const docs = await (ctx.db as any).query(tableName).collect();
+        for (const doc of docs) {
+          await ctx.db.delete(doc._id);
+          count++;
+        }
+      } catch {
+        // Table might not exist or be empty
+      }
+      results[tableName] = count;
+    }
+
+    return results;
   },
 });

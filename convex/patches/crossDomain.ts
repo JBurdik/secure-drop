@@ -69,7 +69,7 @@ export const crossDomain = ({
             const existingHeaders = (ctx.request?.headers ||
               ctx.headers) as Headers;
             const headers = new Headers({
-              ...Object.fromEntries(existingHeaders?.entries()),
+              ...existingHeaders,
             });
             // Skip if the request has an authorization header
             if (headers.get("authorization")) {

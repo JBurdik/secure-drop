@@ -11,7 +11,7 @@ export const createFolder = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ?? undefined;
+    const userId = user?._id ? String(user._id) : undefined;
 
     const space = await ctx.db.get(args.spaceId);
     if (!space) throw new Error("Space not found");

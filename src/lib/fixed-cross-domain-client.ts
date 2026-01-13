@@ -87,9 +87,14 @@ function getCookie(cookie: string) {
   } catch {
     // noop
   }
+  const now = new Date();
   const toSend = Object.entries(parsed).reduce((acc, [key, value]) => {
-    if (value.expires && value.expires < new Date()) {
-      return acc;
+    // expires is stored as string in JSON, need to parse it
+    if (value.expires) {
+      const expiresDate = new Date(value.expires);
+      if (expiresDate < now) {
+        return acc; // Cookie expired, skip it
+      }
     }
     return `${acc}; ${key}=${value.value}`;
   }, "");

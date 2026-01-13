@@ -1,6 +1,38 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getSession } from "./auth";
+import { getSession, authComponent } from "./auth";
+
+// Debug query to check auth status
+export const debugAuth = query({
+  args: {},
+  handler: async (ctx) => {
+    // Step 1: Check if JWT identity is present (token validation)
+    const identity = await ctx.auth.getUserIdentity();
+
+    // Step 2: Try to get user from betterAuth component
+    let user = null;
+    let authError = null;
+    try {
+      user = await authComponent.getAuthUser(ctx);
+    } catch (e) {
+      authError = e instanceof Error ? e.message : String(e);
+    }
+
+    return {
+      // JWT validation
+      step1_hasIdentity: !!identity,
+      step1_identitySubject: identity?.subject ?? null,
+      step1_identitySessionId: (identity as { sessionId?: string })?.sessionId ?? null,
+      step1_identityIssuer: identity?.issuer ?? null,
+
+      // User lookup
+      step2_hasUser: !!user,
+      step2_userId: user?._id ? String(user._id) : null,
+      step2_userEmail: (user as { email?: string })?.email ?? null,
+      step2_authError: authError,
+    };
+  },
+});
 
 function generateSpaceId(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -29,7 +61,7 @@ export const createSpace = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ?? undefined;
+    const userId = user?._id ? String(user._id) : undefined;
 
     // Check space limit
     if (userId) {
@@ -56,8 +88,11 @@ export const createSpace = mutation({
       }
     }
 
-    // Anonymous users can't create infinite spaces
-    const isInfinite = !args.expiresIn && userId;
+    // Check if user wants infinite expiration (expiresIn is undefined)
+    const wantsInfinite = args.expiresIn === undefined;
+
+    // Only authenticated users can have infinite spaces
+    const isInfinite = wantsInfinite && userId;
 
     // Set expiration limits based on auth status
     let expiresAt: number;
@@ -65,8 +100,10 @@ export const createSpace = mutation({
       expiresAt = 0; // 0 means infinite
     } else {
       const maxExpiration = userId ? AUTH_MAX_EXPIRATION : ANON_MAX_EXPIRATION;
+      // If user wanted infinite but isn't authenticated, use their max expiration
+      const defaultExpiration = userId ? AUTH_MAX_EXPIRATION : ANON_MAX_EXPIRATION;
       const expiresIn = Math.min(
-        args.expiresIn || ANON_MAX_EXPIRATION,
+        args.expiresIn ?? defaultExpiration,
         maxExpiration,
       );
       expiresAt = Date.now() + expiresIn;
@@ -91,7 +128,7 @@ export const getSpace = query({
   args: { spaceId: v.string() },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ?? undefined;
+    const userId = user?._id ? String(user._id) : undefined;
 
     const space = await ctx.db
       .query("spaces")
@@ -174,7 +211,7 @@ export const getUserSpaces = query({
   args: {},
   handler: async (ctx) => {
     const user = await getSession(ctx);
-    const userId = user?._id ?? undefined;
+    const userId = user?._id ? String(user._id) : undefined;
 
     if (!userId) return [];
 
@@ -201,7 +238,7 @@ export const getUserSpaceCount = query({
   args: {},
   handler: async (ctx) => {
     const user = await getSession(ctx);
-    const userId = user?._id ?? undefined;
+    const userId = user?._id ? String(user._id) : undefined;
 
     if (!userId) {
       return {
@@ -236,7 +273,7 @@ export const deleteSpace = mutation({
   args: { spaceId: v.id("spaces") },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ?? undefined;
+    const userId = user?._id ? String(user._id) : undefined;
 
     const space = await ctx.db.get(args.spaceId);
 
@@ -281,7 +318,7 @@ export const updateSpace = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ?? undefined;
+    const userId = user?._id ? String(user._id) : undefined;
 
     const space = await ctx.db.get(args.spaceId);
 
