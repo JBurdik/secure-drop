@@ -15,8 +15,7 @@ const trustedOrigins = [
   "http://localhost:3000",
   "https://secure-drop.burdych.net",
   "https://convex.secure-drop.burdych.net",
-  "https://convex.secure-drop.burdych.net",
-  "local-secure-drop.burdych.net",
+  "https://local-secure-drop.burdych.net",
   siteUrl,
 ].filter((origin) => origin && origin.length > 0);
 

@@ -1,7 +1,11 @@
 # Production Docker Compose for Dokploy
 #
 # Environment variables to set in Dokploy:
-#   - VITE_CONVEX_URL: Full URL to Convex API (e.g., https://api.securedrop.example.com)
+#   - VITE_CONVEX_URL: Full URL to Convex API (e.g., https://convex.secure-drop.burdych.net)
+#   - VITE_CONVEX_SITE_URL: Full URL to Convex HTTP actions (e.g., https://convex.secure-drop.burdych.net/http)
+#   - CONVEX_SITE_URL: Same as VITE_CONVEX_SITE_URL
+#   - SITE_URL: Frontend URL for CORS (e.g., https://secure-drop.burdych.net)
+#   - BETTER_AUTH_SECRET: Secret key for Better Auth (required for production)
 #   - FRONTEND_PORT: Frontend port (default: 3000)
 #   - CONVEX_API_PORT: Convex API port (default: 3210)
 #   - CONVEX_SITE_PORT: Convex HTTP actions port (default: 3211)
@@ -21,6 +25,9 @@ services:
     environment:
       - CONVEX_CLOUD_ORIGIN=${VITE_CONVEX_URL:-http://localhost:3210}
       - CONVEX_SITE_ORIGIN=${CONVEX_SITE_URL:-http://localhost:3211}
+      - SITE_URL=${SITE_URL:-http://localhost:5173}
+      - CONVEX_URL=${VITE_CONVEX_URL:-http://localhost:3210}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - RUST_LOG=info
       - DOCUMENT_RETENTION_DELAY=172800
     healthcheck:
