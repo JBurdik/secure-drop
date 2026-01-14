@@ -5,6 +5,7 @@ import {
   Trash2,
   Pencil,
   Palette,
+  Check,
   // Icon options
   FolderHeart,
   FolderCog,
@@ -83,6 +84,9 @@ interface FolderNodeProps {
   color?: string;
   icon?: string;
   isOwner: boolean;
+  isSelected?: boolean;
+  showCheckbox?: boolean;
+  onSelect?: (e: React.MouseEvent) => void;
   onDelete?: () => void;
   onRename?: (name: string) => void;
   onUpdateFolder?: (updates: { color?: string; icon?: string }) => void;
@@ -98,6 +102,9 @@ export function FolderNode({
   color,
   icon,
   isOwner,
+  isSelected = false,
+  showCheckbox = false,
+  onSelect,
   onDelete,
   onRename,
   onUpdateFolder,
@@ -145,8 +152,26 @@ export function FolderNode({
         "group relative w-28 sm:w-36 select-none rounded-lg border bg-card p-2 sm:p-3 shadow-sm hover:shadow-md",
         isDragging && "opacity-40",
         isOver && "ring-2 ring-primary bg-primary/10",
+        isSelected && "ring-2 ring-primary",
       )}
     >
+      {/* Selection checkbox */}
+      {showCheckbox && (
+        <div
+          className={cn(
+            "absolute -left-1 -top-1 h-5 w-5 rounded border bg-card z-10",
+            "flex items-center justify-center cursor-pointer",
+            "opacity-0 group-hover:opacity-100 transition-opacity",
+            isSelected && "opacity-100 bg-primary border-primary"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect?.(e);
+          }}
+        >
+          {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+        </div>
+      )}
       {/* Drag handle */}
       <div
         {...listeners}

@@ -12,6 +12,7 @@ import {
   MoreVertical,
   Box,
   HardDrive,
+  Check,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,9 @@ interface FileNodeProps {
   positionY: number;
   url: string | null;
   isOwner: boolean;
-
+  isSelected?: boolean;
+  showCheckbox?: boolean;
+  onSelect?: (e: React.MouseEvent) => void;
   onDelete?: () => void;
   onPreview?: () => void;
 }
@@ -128,10 +131,13 @@ export function FileNode({
   positionY,
   url,
   isOwner,
+  isSelected = false,
+  showCheckbox = false,
+  onSelect,
   onDelete,
   onPreview,
 }: FileNodeProps) {
-  const [showThumbnail, setShowThumbnail] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id,
@@ -169,8 +175,26 @@ export function FileNode({
         "group relative w-28 sm:w-36 select-none rounded-lg border bg-card p-2 sm:p-3 shadow-sm hover:shadow-md",
         isDragging && "opacity-40",
         isOver && "ring-2 ring-primary bg-primary/10",
+        isSelected && "ring-2 ring-primary",
       )}
     >
+      {/* Selection checkbox */}
+      {showCheckbox && (
+        <div
+          className={cn(
+            "absolute -left-1 -top-1 h-5 w-5 rounded border bg-card z-10",
+            "flex items-center justify-center cursor-pointer",
+            "opacity-0 group-hover:opacity-100 transition-opacity",
+            isSelected && "opacity-100 bg-primary border-primary"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect?.(e);
+          }}
+        >
+          {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+        </div>
+      )}
       {/* Drag handle - the main card body */}
       <div
         {...listeners}
@@ -178,21 +202,23 @@ export function FileNode({
         className="cursor-grab active:cursor-grabbing"
       >
         <div className="flex flex-col items-center gap-1 sm:gap-2">
-          {showThumbnail && isImage && url ? (
+          {isImage && url && !imageError ? (
             <img
               src={url}
               alt={name}
-              className="h-14 w-14 sm:h-20 sm:w-20 rounded object-cover"
-              onError={() => setShowThumbnail(false)}
+              className="h-14 w-14 sm:h-20 sm:w-20 rounded object-cover cursor-pointer"
+              onError={() => setImageError(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onPreview) onPreview();
+              }}
             />
           ) : (
             <div
               className="flex h-14 w-14 sm:h-20 sm:w-20 items-center justify-center rounded bg-muted cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
-                if (isImage && url) {
-                  setShowThumbnail(true);
-                } else if (canPreview && onPreview) {
+                if (canPreview && onPreview) {
                   onPreview();
                 }
               }}

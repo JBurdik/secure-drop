@@ -110,3 +110,55 @@ export const getFileUrl = query({
     return await ctx.storage.getUrl(file.storageId);
   },
 });
+
+export const deleteFiles = mutation({
+  args: { fileIds: v.array(v.id("files")) },
+  handler: async (ctx, args) => {
+    const user = await getSession(ctx);
+    const userId = user?.consistentUserId;
+
+    for (const fileId of args.fileIds) {
+      const file = await ctx.db.get(fileId);
+      if (!file) continue;
+
+      if (!file.spaceId) continue;
+      const space = await ctx.db.get(file.spaceId);
+      if (!space) continue;
+
+      // Check if current user is space owner
+      if (space.createdBy && space.createdBy !== userId) {
+        continue; // Skip files user doesn't own
+      }
+
+      await ctx.storage.delete(file.storageId);
+      await ctx.db.delete(fileId);
+    }
+  },
+});
+
+export const moveFilesToFolder = mutation({
+  args: {
+    fileIds: v.array(v.id("files")),
+    folderId: v.optional(v.id("folders")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getSession(ctx);
+    const userId = user?.consistentUserId;
+
+    for (const fileId of args.fileIds) {
+      const file = await ctx.db.get(fileId);
+      if (!file) continue;
+
+      if (!file.spaceId) continue;
+      const space = await ctx.db.get(file.spaceId);
+      if (!space) continue;
+
+      // Check if current user is space owner
+      if (space.createdBy && space.createdBy !== userId) {
+        continue; // Skip files user doesn't own
+      }
+
+      await ctx.db.patch(fileId, { folderId: args.folderId });
+    }
+  },
+});

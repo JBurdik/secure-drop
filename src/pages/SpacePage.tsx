@@ -78,9 +78,9 @@ export default function SpacePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="border-b">
+      <header className="border-b flex-shrink-0">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <Link to="/" className="text-xl font-bold">
             SecureDrop
@@ -103,8 +103,8 @@ export default function SpacePage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-2 sm:px-4 py-4 sm:py-6">
-        <div className="mb-3 sm:mb-4">
+      <div className="flex-1 flex flex-col mx-auto w-full max-w-6xl px-2 sm:px-4 py-4 sm:py-6 min-h-0">
+        <div className="mb-3 sm:mb-4 flex-shrink-0">
           <Button variant="ghost" size="sm" asChild>
             <Link to="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -113,7 +113,7 @@ export default function SpacePage() {
           </Button>
         </div>
 
-        <div className="space-y-3 sm:space-y-4">
+        <div className="flex-1 flex flex-col gap-3 sm:gap-4 min-h-0">
           <SpaceHeader
             spaceId={space._id}
             shareId={space.spaceId}

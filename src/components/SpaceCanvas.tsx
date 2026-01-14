@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -21,7 +21,20 @@ import { useOptimisticMoveFileToFolder } from "@/hooks/useOptimisticMoveFileToFo
 import { FileNode, FileNodePreview } from "./FileNode";
 import { FolderNode, FolderNodePreview } from "./FolderNode";
 import { FilePreviewModal } from "./FilePreviewModal";
-import { Upload, Plus, FolderPlus, X, ArrowLeft, LayoutGrid, List, Loader2 } from "lucide-react";
+import { SelectionActionBar } from "./SelectionActionBar";
+import { useSelectionStore, type SelectableItem } from "@/stores/useSelectionStore";
+import { downloadAsZip } from "@/lib/download";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { Upload, Plus, FolderPlus, X, ArrowLeft, LayoutGrid, List, Loader2, FileText, Download, Eye, Trash2, FolderInput, Pencil, Palette, Folder } from "lucide-react";
 import type { UploadProgress } from "@/types/upload";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,6 +47,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+// Folder color options for context menu
+const FOLDER_COLORS = {
+  amber: { bg: "bg-amber-500", label: "Amber" },
+  blue: { bg: "bg-blue-500", label: "Blue" },
+  green: { bg: "bg-green-500", label: "Green" },
+  red: { bg: "bg-red-500", label: "Red" },
+  purple: { bg: "bg-purple-500", label: "Purple" },
+  pink: { bg: "bg-pink-500", label: "Pink" },
+  orange: { bg: "bg-orange-500", label: "Orange" },
+  cyan: { bg: "bg-cyan-500", label: "Cyan" },
+} as const;
 
 // Grid configuration
 const GRID_SIZE = 160; // Grid cell size in pixels
@@ -107,11 +132,25 @@ export function SpaceCanvas({
   const updateFolderPosition = useOptimisticUpdateFolderPosition(spaceCode);
   const moveFileToFolder = useOptimisticMoveFileToFolder(spaceId);
   const deleteFile = useMutation(api.files.deleteFile);
+  const deleteFiles = useMutation(api.files.deleteFiles);
+  const moveFilesToFolder = useMutation(api.files.moveFilesToFolder);
   const deleteFolder = useMutation(api.folders.deleteFolder);
   const createFolder = useMutation(api.folders.createFolder);
   const createFolderFromFiles = useMutation(api.folders.createFolderFromFiles);
   const renameFolder = useMutation(api.folders.renameFolder);
   const updateFolder = useMutation(api.folders.updateFolder);
+
+  // Selection state
+  const {
+    selectItem,
+    toggleItem,
+    rangeSelect,
+    clearSelection,
+    selectAll,
+    isSelected,
+    getSelectedFiles,
+    getSelectedCount,
+  } = useSelectionStore();
 
   const mouseSensor = useSensor(MouseSensor, {
     activationConstraint: { distance: 3 },
@@ -497,7 +536,84 @@ export function SpaceCanvas({
     [moveFileToFolder],
   );
 
+  // Build selectable items list for range selection
+  const selectableItems: SelectableItem[] = [
+    ...folders.map((f) => ({ type: "folder" as const, id: f._id })),
+    ...canvasFiles.map((f) => ({ type: "file" as const, id: f._id })),
+  ];
+
+  // Handle item selection with keyboard modifiers
+  const handleItemSelect = useCallback(
+    (item: SelectableItem, index: number, e: React.MouseEvent) => {
+      if (e.shiftKey && useSelectionStore.getState().lastSelectedIndex !== null) {
+        rangeSelect(selectableItems, useSelectionStore.getState().lastSelectedIndex!, index);
+      } else if (e.ctrlKey || e.metaKey) {
+        toggleItem(item, index);
+      } else {
+        selectItem(item, index);
+      }
+    },
+    [selectableItems, rangeSelect, toggleItem, selectItem],
+  );
+
+  // Bulk delete handler
+  const handleBulkDelete = useCallback(async () => {
+    const fileIds = getSelectedFiles();
+    if (fileIds.length === 0) return;
+
+    if (!confirm(`Delete ${fileIds.length} selected file(s)?`)) return;
+
+    await deleteFiles({ fileIds });
+    clearSelection();
+  }, [getSelectedFiles, deleteFiles, clearSelection]);
+
+  // Bulk download as ZIP handler
+  const handleBulkDownloadZip = useCallback(async () => {
+    const fileIds = getSelectedFiles();
+    const filesToDownload = files
+      .filter((f) => fileIds.includes(f._id) && f.url)
+      .map((f) => ({ name: f.name, url: f.url! }));
+
+    if (filesToDownload.length === 0) return;
+
+    await downloadAsZip(filesToDownload, "files.zip");
+  }, [getSelectedFiles, files]);
+
+  // Bulk move to folder handler
+  const handleBulkMoveToFolder = useCallback(
+    async (folderId: Id<"folders">) => {
+      const fileIds = getSelectedFiles();
+      if (fileIds.length === 0) return;
+
+      await moveFilesToFolder({ fileIds, folderId });
+      clearSelection();
+    },
+    [getSelectedFiles, moveFilesToFolder, clearSelection],
+  );
+
+  // Keyboard shortcuts for selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape to clear selection
+      if (e.key === "Escape") {
+        clearSelection();
+      }
+      // Ctrl/Cmd + A to select all
+      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        // Only if focus is not in an input
+        if (document.activeElement?.tagName !== "INPUT") {
+          e.preventDefault();
+          selectAll(selectableItems);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [clearSelection, selectAll, selectableItems]);
+
   const canUpload = allowUploads || isOwner;
+  const selectedCount = getSelectedCount();
 
   return (
     <>
@@ -530,7 +646,7 @@ export function SpaceCanvas({
           onDragOver={handleExternalDragOver}
           onDragLeave={handleDragLeave}
           className={cn(
-            "relative min-h-[400px] sm:min-h-[500px] w-full rounded-lg border-2 border-dashed transition-colors overflow-hidden",
+            "relative flex-1 min-h-[300px] w-full rounded-lg border-2 border-dashed transition-colors overflow-auto",
             isDraggingOver && canUpload && "border-primary bg-primary/5",
             isDraggingItem && "bg-muted/50",
             !canUpload && "border-muted",
@@ -623,40 +739,161 @@ export function SpaceCanvas({
           )}
 
           {/* Render folders */}
-          {folders.map((folder) => (
-            <FolderNode
-              key={folder._id}
-              id={folder._id}
-              name={folder.name}
-              positionX={folder.positionX}
-              positionY={folder.positionY}
-              fileCount={folderFileCounts[folder._id] || 0}
-              color={folder.color}
-              icon={folder.icon}
-              isOwner={isOwner}
-              onDelete={() => handleDeleteFolder(folder._id)}
-              onRename={(name) => handleRenameFolder(folder._id, name)}
-              onUpdateFolder={(updates) => handleUpdateFolder(folder._id, updates)}
-              onClick={() => setOpenFolder(folder)}
-            />
-          ))}
+          {folders.map((folder, index) => {
+            const folderItem: SelectableItem = { type: "folder", id: folder._id };
+            return (
+              <ContextMenu key={folder._id}>
+                <ContextMenuTrigger asChild>
+                  <div>
+                    <FolderNode
+                      id={folder._id}
+                      name={folder.name}
+                      positionX={folder.positionX}
+                      positionY={folder.positionY}
+                      fileCount={folderFileCounts[folder._id] || 0}
+                      color={folder.color}
+                      icon={folder.icon}
+                      isOwner={isOwner}
+                      isSelected={isSelected(folderItem)}
+                      showCheckbox={isOwner}
+                      onSelect={(e) => handleItemSelect(folderItem, index, e)}
+                      onDelete={() => handleDeleteFolder(folder._id)}
+                      onRename={(name) => handleRenameFolder(folder._id, name)}
+                      onUpdateFolder={(updates) => handleUpdateFolder(folder._id, updates)}
+                      onClick={() => setOpenFolder(folder)}
+                    />
+                  </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onClick={() => setOpenFolder(folder)}>
+                    <Folder className="h-4 w-4 mr-2" />
+                    Open
+                  </ContextMenuItem>
+                  {isOwner && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onClick={() => {
+                        // The dropdown menu in FolderNode handles renaming
+                        // Context menu color change is more useful here
+                      }}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Rename
+                      </ContextMenuItem>
+                      <ContextMenuSub>
+                        <ContextMenuSubTrigger>
+                          <Palette className="h-4 w-4 mr-2" />
+                          Color
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent>
+                          {Object.entries(FOLDER_COLORS).map(([key, value]) => (
+                            <ContextMenuItem
+                              key={key}
+                              onClick={() => handleUpdateFolder(folder._id, { color: key })}
+                            >
+                              <div className={cn("h-4 w-4 rounded-full mr-2", value.bg)} />
+                              {value.label}
+                            </ContextMenuItem>
+                          ))}
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        onClick={() => handleDeleteFolder(folder._id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </ContextMenuItem>
+                    </>
+                  )}
+                </ContextMenuContent>
+              </ContextMenu>
+            );
+          })}
 
           {/* Render files (not in folders) */}
-          {canvasFiles.map((file) => (
-            <FileNode
-              key={file._id}
-              id={file._id}
-              name={file.name}
-              size={file.size}
-              mimeType={file.mimeType}
-              positionX={file.positionX}
-              positionY={file.positionY}
-              url={file.url}
-              isOwner={isOwner}
-              onDelete={() => handleDeleteFile(file._id)}
-              onPreview={() => setPreviewFile(file)}
-            />
-          ))}
+          {canvasFiles.map((file, fileIndex) => {
+            const index = folders.length + fileIndex; // Account for folders in selection list
+            const fileItem: SelectableItem = { type: "file", id: file._id };
+            const canPreview =
+              file.mimeType.startsWith("image/") ||
+              file.mimeType.startsWith("video/") ||
+              file.mimeType.startsWith("audio/") ||
+              file.mimeType === "application/pdf";
+
+            return (
+              <ContextMenu key={file._id}>
+                <ContextMenuTrigger asChild>
+                  <div>
+                    <FileNode
+                      id={file._id}
+                      name={file.name}
+                      size={file.size}
+                      mimeType={file.mimeType}
+                      positionX={file.positionX}
+                      positionY={file.positionY}
+                      url={file.url}
+                      isOwner={isOwner}
+                      isSelected={isSelected(fileItem)}
+                      showCheckbox={isOwner}
+                      onSelect={(e) => handleItemSelect(fileItem, index, e)}
+                      onDelete={() => handleDeleteFile(file._id)}
+                      onPreview={() => setPreviewFile(file)}
+                    />
+                  </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  {file.url && (
+                    <ContextMenuItem asChild>
+                      <a href={file.url} download={file.name}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </a>
+                    </ContextMenuItem>
+                  )}
+                  {canPreview && (
+                    <ContextMenuItem onClick={() => setPreviewFile(file)}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </ContextMenuItem>
+                  )}
+                  {folders.length > 0 && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuSub>
+                        <ContextMenuSubTrigger>
+                          <FolderInput className="h-4 w-4 mr-2" />
+                          Move to Folder
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent>
+                          {folders.map((folder) => (
+                            <ContextMenuItem
+                              key={folder._id}
+                              onClick={() => moveFileToFolder({ fileId: file._id, folderId: folder._id })}
+                            >
+                              {folder.name}
+                            </ContextMenuItem>
+                          ))}
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
+                    </>
+                  )}
+                  {isOwner && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        onClick={() => handleDeleteFile(file._id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </ContextMenuItem>
+                    </>
+                  )}
+                </ContextMenuContent>
+              </ContextMenu>
+            );
+          })}
 
           {/* Render uploading files */}
           {canvasUploads.map((upload) => (
@@ -842,6 +1079,18 @@ export function SpaceCanvas({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Selection Action Bar */}
+      {isOwner && selectedCount > 0 && (
+        <SelectionActionBar
+          selectedCount={selectedCount}
+          folders={folders}
+          onDelete={handleBulkDelete}
+          onDownloadZip={handleBulkDownloadZip}
+          onMoveToFolder={handleBulkMoveToFolder}
+          onClearSelection={clearSelection}
+        />
+      )}
     </>
   );
 }
@@ -881,7 +1130,7 @@ function FolderFileItem({
           />
         ) : (
           <div className="w-full h-20 bg-muted rounded mb-2 flex items-center justify-center">
-            <span className="text-2xl">📄</span>
+            <FileText className="h-8 w-8 text-muted-foreground" />
           </div>
         )}
         <p className="text-sm font-medium truncate">{file.name}</p>
@@ -924,7 +1173,7 @@ function FolderFileItem({
           onClick={(e) => e.stopPropagation()}
         >
           <Button variant="secondary" size="icon" className="h-6 w-6">
-            <span className="text-xs">⬇</span>
+            <Download className="h-3 w-3" />
           </Button>
         </a>
       )}
@@ -1024,7 +1273,7 @@ function FolderFileListItem({
           className="w-12 h-12 bg-muted rounded flex items-center justify-center shrink-0 cursor-pointer"
           onClick={() => canPreview && onPreview()}
         >
-          <span className="text-xl">📄</span>
+          <FileText className="h-6 w-6 text-muted-foreground" />
         </div>
       )}
       <div className="flex-1 min-w-0">
@@ -1035,7 +1284,7 @@ function FolderFileListItem({
         {file.url && (
           <a href={file.url} download={file.name} onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <span className="text-sm">⬇</span>
+              <Download className="h-4 w-4" />
             </Button>
           </a>
         )}

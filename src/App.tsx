@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CreateSpaceDialog } from "@/components/CreateSpaceDialog";
-import { Plus, FolderOpen, Clock, Sun, Moon, Infinity } from "lucide-react";
+import { Plus, FolderOpen, Clock, Sun, Moon, Infinity, Link2, Upload } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { getStoredSpaces, type StoredSpace } from "@/lib/spaces";
 import { UserMenu } from "@/components/UserMenu";
@@ -146,7 +146,7 @@ function App() {
         <div className="mt-12 sm:mt-16 grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-3">
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-              <span className="text-2xl">🔗</span>
+              <Link2 className="h-6 w-6 text-muted-foreground" />
             </div>
             <h3 className="font-semibold">Simple Sharing</h3>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -155,7 +155,7 @@ function App() {
           </div>
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-              <span className="text-2xl">⏰</span>
+              <Clock className="h-6 w-6 text-muted-foreground" />
             </div>
             <h3 className="font-semibold">Auto-Expiring</h3>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -164,7 +164,7 @@ function App() {
           </div>
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
-              <span className="text-2xl">📤</span>
+              <Upload className="h-6 w-6 text-muted-foreground" />
             </div>
             <h3 className="font-semibold">Receive Files</h3>
             <p className="mt-2 text-sm text-muted-foreground">
