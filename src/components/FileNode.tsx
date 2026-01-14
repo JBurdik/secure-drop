@@ -1,4 +1,4 @@
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   File,
   FileImage,
@@ -10,6 +10,8 @@ import {
   Trash2,
   Eye,
   MoreVertical,
+  Box,
+  HardDrive,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -50,18 +52,35 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
-function getFileIcon(mimeType: string) {
+function getFileIcon(mimeType: string, fileName?: string) {
+  // Check by extension first for better accuracy
+  const ext = fileName?.split(".").pop()?.toLowerCase();
+
+  // Executables and installers
+  if (ext === "exe" || ext === "msi" || mimeType === "application/x-msdownload") return Box;
+  if (ext === "dmg" || mimeType === "application/x-apple-diskimage") return HardDrive;
+  if (ext === "app" || ext === "pkg" || ext === "deb" || ext === "rpm") return Box;
+
+  // Media types
   if (mimeType.startsWith("image/")) return FileImage;
   if (mimeType.startsWith("video/")) return FileVideo;
   if (mimeType.startsWith("audio/")) return FileAudio;
+
+  // Documents
   if (mimeType.startsWith("text/") || mimeType === "application/pdf")
     return FileText;
+
+  // Archives
   if (
     mimeType.includes("zip") ||
     mimeType.includes("rar") ||
-    mimeType.includes("tar")
+    mimeType.includes("tar") ||
+    mimeType.includes("7z") ||
+    mimeType.includes("gzip") ||
+    ext === "zip" || ext === "rar" || ext === "7z" || ext === "tar" || ext === "gz"
   )
     return FileArchive;
+
   return File;
 }
 
@@ -72,7 +91,7 @@ export function FileNodePreview({
   mimeType,
   url,
 }: FileNodePreviewProps) {
-  const Icon = getFileIcon(mimeType);
+  const Icon = getFileIcon(mimeType, name);
   const isImage = mimeType.startsWith("image/");
 
   return (
@@ -113,8 +132,14 @@ export function FileNode({
   onPreview,
 }: FileNodeProps) {
   const [showThumbnail, setShowThumbnail] = useState(false);
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
     id,
+  });
+
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `file-drop-${id}`,
+    data: { type: "file", id },
   });
 
   const style: React.CSSProperties = {
@@ -125,7 +150,7 @@ export function FileNode({
     transition: "box-shadow 0.2s, opacity 0.15s",
   };
 
-  const Icon = getFileIcon(mimeType);
+  const Icon = getFileIcon(mimeType, name);
   const isImage = mimeType.startsWith("image/");
   const canPreview =
     isImage ||
@@ -135,11 +160,15 @@ export function FileNode({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => {
+        setDragRef(node);
+        setDropRef(node);
+      }}
       style={style}
       className={cn(
         "group relative w-28 sm:w-36 select-none rounded-lg border bg-card p-2 sm:p-3 shadow-sm hover:shadow-md",
         isDragging && "opacity-40",
+        isOver && "ring-2 ring-primary bg-primary/10",
       )}
     >
       {/* Drag handle - the main card body */}

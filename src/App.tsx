@@ -1,11 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CreateSpaceDialog } from "@/components/CreateSpaceDialog";
-import { Plus, FolderOpen, Clock, Sun, Moon } from "lucide-react";
+import { Plus, FolderOpen, Clock, Sun, Moon, Infinity } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { getStoredSpaces, type StoredSpace } from "@/lib/spaces";
 import { UserMenu } from "@/components/UserMenu";
+import { useSession } from "@/lib/auth-client";
+import { useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
 
 function formatTimeRemaining(expiresAt: number): string {
   const remaining = expiresAt - Date.now();
@@ -21,13 +24,35 @@ function formatTimeRemaining(expiresAt: number): string {
 
 function App() {
   const [showCreate, setShowCreate] = useState(false);
-  const [spaces, setSpaces] = useState<StoredSpace[]>([]);
+  const [localSpaces, setLocalSpaces] = useState<StoredSpace[]>([]);
   const { theme, toggleTheme } = useTheme();
+  const { data: session } = useSession();
 
-  // Load spaces from localStorage
+  // Fetch spaces from database for authenticated users
+  const dbSpaces = useQuery(api.spaces.getUserSpaces);
+
+  // Load spaces from localStorage (for anonymous users or as fallback)
   useEffect(() => {
-    setSpaces(getStoredSpaces());
+    setLocalSpaces(getStoredSpaces());
   }, [showCreate]); // Refresh when dialog closes
+
+  // Combine spaces: use DB spaces for authenticated users, localStorage for anonymous
+  const spaces = useMemo(() => {
+    if (session?.user && dbSpaces) {
+      // Authenticated: use database spaces
+      return dbSpaces.map((s) => ({
+        spaceId: s.spaceId,
+        name: s.name,
+        createdAt: 0, // Not stored in DB
+        expiresAt: s.expiresAt,
+      }));
+    }
+    // Anonymous: use localStorage
+    return localSpaces;
+  }, [session?.user, dbSpaces, localSpaces]);
+
+  const isAuthenticated = !!session?.user;
+  const maxSpaces = isAuthenticated ? 5 : 3;
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,12 +99,12 @@ function App() {
           </Button>
         </div>
 
-        {/* Your Spaces (from localStorage) */}
+        {/* Your Spaces */}
         {spaces.length > 0 && (
           <div className="mt-16">
             <h2 className="mb-4 text-lg font-semibold">Your Spaces</h2>
             <p className="mb-4 text-sm text-muted-foreground">
-              {spaces.length}/3 spaces used.
+              {spaces.length}/{maxSpaces} spaces used.
             </p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {spaces.map((space) => (
@@ -97,8 +122,17 @@ function App() {
                         {space.name}
                       </h3>
                       <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {formatTimeRemaining(space.expiresAt)}
+                        {space.expiresAt === 0 ? (
+                          <>
+                            <Infinity className="h-3 w-3" />
+                            <span>Never expires</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="h-3 w-3" />
+                            {formatTimeRemaining(space.expiresAt)}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

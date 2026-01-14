@@ -46,9 +46,18 @@ export const createAuth = (
   });
 
 // Helper to get session in mutations/queries - returns null if not authenticated
+// Returns user with a consistent ID from the JWT identity (identity.subject)
 export const getSession = async (ctx: GenericCtx<DataModel>) => {
   try {
-    return await authComponent.getAuthUser(ctx);
+    const user = await authComponent.getAuthUser(ctx);
+    if (!user) return null;
+
+    // Get the consistent user ID from JWT identity.subject
+    // This is the same ID used by Better Auth internally and is consistent across devices
+    const identity = await ctx.auth.getUserIdentity();
+    const consistentUserId = identity?.subject ?? String(user._id);
+
+    return { ...user, consistentUserId };
   } catch {
     return null;
   }

@@ -3,7 +3,6 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { SpaceCanvas } from "@/components/SpaceCanvas";
 import { SpaceHeader } from "@/components/SpaceHeader";
-import { UploadProgressList } from "@/components/UploadProgress";
 import { UserMenu } from "@/components/UserMenu";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Sun, Moon } from "lucide-react";
@@ -24,9 +23,7 @@ export default function SpacePage() {
   );
 
   const deleteSpace = useMutation(api.spaces.deleteSpace);
-  const { uploads, uploadWithProgress, clearUpload } = useFileUpload(
-    space?._id
-  );
+  const { uploads, uploadWithProgress } = useFileUpload(space?._id);
 
   // Check if this is an anonymous space owned by current user (via localStorage)
   const isLocalOwner = useMemo(() => {
@@ -130,15 +127,16 @@ export default function SpacePage() {
 
           <SpaceCanvas
             spaceId={space._id}
+            spaceCode={space.spaceId}
             files={files || []}
+            folders={space.folders || []}
             isOwner={isOwner}
             allowUploads={space.allowUploads}
+            uploads={uploads}
             onUpload={uploadWithProgress}
           />
         </div>
       </div>
-
-      <UploadProgressList uploads={uploads} onClear={clearUpload} />
     </div>
   );
 }

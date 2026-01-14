@@ -18,18 +18,45 @@ export const debugAuth = query({
       authError = e instanceof Error ? e.message : String(e);
     }
 
+    // Step 3: Check all spaces in DB
+    const allSpaces = await ctx.db.query("spaces").collect();
+
+    // The consistent user ID (identity.subject) should be used for matching
+    const consistentUserId = identity?.subject ?? null;
+    const stringifiedUserId = user?._id ? String(user._id) : null;
+
+    // Check which spaces belong to this user
+    const userSpaces = allSpaces.filter(
+      (s) => s.createdBy === consistentUserId || s.createdBy === stringifiedUserId
+    );
+
+    const spacesInfo = allSpaces.map((s) => ({
+      id: s._id,
+      spaceId: s.spaceId,
+      createdBy: s.createdBy,
+      matchesConsistentId: s.createdBy === consistentUserId,
+      matchesStringifiedId: s.createdBy === stringifiedUserId,
+    }));
+
     return {
       // JWT validation
       step1_hasIdentity: !!identity,
-      step1_identitySubject: identity?.subject ?? null,
+      step1_identitySubject: consistentUserId,
       step1_identitySessionId: (identity as { sessionId?: string })?.sessionId ?? null,
-      step1_identityIssuer: identity?.issuer ?? null,
 
       // User lookup
       step2_hasUser: !!user,
-      step2_userId: user?._id ? String(user._id) : null,
+      step2_stringifiedUserId: stringifiedUserId,
       step2_userEmail: (user as { email?: string })?.email ?? null,
       step2_authError: authError,
+
+      // ID comparison - these should match!
+      step2_idsMatch: consistentUserId === stringifiedUserId,
+
+      // Spaces info
+      step3_totalSpaces: allSpaces.length,
+      step3_userSpacesCount: userSpaces.length,
+      step3_spaces: spacesInfo,
     };
   },
 });
@@ -61,7 +88,7 @@ export const createSpace = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ? String(user._id) : undefined;
+    const userId = user?.consistentUserId;
 
     // Check space limit
     if (userId) {
@@ -128,7 +155,7 @@ export const getSpace = query({
   args: { spaceId: v.string() },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ? String(user._id) : undefined;
+    const userId = user?.consistentUserId;
 
     const space = await ctx.db
       .query("spaces")
@@ -162,6 +189,8 @@ export const getSpace = query({
         name: f.name,
         positionX: f.positionX,
         positionY: f.positionY,
+        color: f.color,
+        icon: f.icon,
       })),
     };
   },
@@ -211,14 +240,26 @@ export const getUserSpaces = query({
   args: {},
   handler: async (ctx) => {
     const user = await getSession(ctx);
-    const userId = user?._id ? String(user._id) : undefined;
+    const userId = user?.consistentUserId;
 
     if (!userId) return [];
 
-    const spaces = await ctx.db
+    // Query spaces by consistent user ID
+    let spaces = await ctx.db
       .query("spaces")
       .withIndex("by_createdBy", (q) => q.eq("createdBy", userId))
       .collect();
+
+    // Fallback: also check with String(user._id) format for backwards compatibility
+    if (spaces.length === 0 && user?._id) {
+      const legacyUserId = String(user._id);
+      if (legacyUserId !== userId) {
+        spaces = await ctx.db
+          .query("spaces")
+          .withIndex("by_createdBy", (q) => q.eq("createdBy", legacyUserId))
+          .collect();
+      }
+    }
 
     // Filter out expired spaces (expiresAt === 0 means infinite)
     const now = Date.now();
@@ -238,7 +279,7 @@ export const getUserSpaceCount = query({
   args: {},
   handler: async (ctx) => {
     const user = await getSession(ctx);
-    const userId = user?._id ? String(user._id) : undefined;
+    const userId = user?.consistentUserId;
 
     if (!userId) {
       return {
@@ -273,7 +314,7 @@ export const deleteSpace = mutation({
   args: { spaceId: v.id("spaces") },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ? String(user._id) : undefined;
+    const userId = user?.consistentUserId;
 
     const space = await ctx.db.get(args.spaceId);
 
@@ -318,7 +359,7 @@ export const updateSpace = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ? String(user._id) : undefined;
+    const userId = user?.consistentUserId;
 
     const space = await ctx.db.get(args.spaceId);
 

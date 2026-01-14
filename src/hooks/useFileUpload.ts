@@ -14,12 +14,12 @@ export function useFileUpload(spaceId: Id<"spaces"> | undefined) {
   const uploadFile = useMutation(api.files.uploadFile);
 
   const uploadWithProgress = useCallback(
-    async (file: File, x: number, y: number): Promise<void> => {
+    async (file: File, x: number, y: number, folderId?: Id<"folders">): Promise<void> => {
       if (!spaceId) return;
 
       const uploadId = crypto.randomUUID();
 
-      // Initialize upload state
+      // Initialize upload state with position
       setUploads((prev) => {
         const next = new Map(prev);
         next.set(uploadId, {
@@ -27,6 +27,9 @@ export function useFileUpload(spaceId: Id<"spaces"> | undefined) {
           fileName: file.name,
           progress: 0,
           status: "pending",
+          positionX: x,
+          positionY: y,
+          folderId,
         });
         return next;
       });
@@ -105,6 +108,7 @@ export function useFileUpload(spaceId: Id<"spaces"> | undefined) {
           spaceId,
           positionX: x,
           positionY: y,
+          folderId,
         });
 
         // Mark as uploaded

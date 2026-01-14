@@ -8,10 +8,12 @@ export const createFolder = mutation({
     name: v.string(),
     positionX: v.number(),
     positionY: v.number(),
+    color: v.optional(v.string()),
+    icon: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getSession(ctx);
-    const userId = user?._id ? String(user._id) : undefined;
+    const userId = user?.consistentUserId;
 
     const space = await ctx.db.get(args.spaceId);
     if (!space) throw new Error("Space not found");
@@ -22,6 +24,8 @@ export const createFolder = mutation({
       positionX: args.positionX,
       positionY: args.positionY,
       createdBy: userId,
+      color: args.color,
+      icon: args.icon,
     });
 
     return folderId;
@@ -51,6 +55,23 @@ export const renameFolder = mutation({
     await ctx.db.patch(args.folderId, {
       name: args.name,
     });
+  },
+});
+
+export const updateFolder = mutation({
+  args: {
+    folderId: v.id("folders"),
+    name: v.optional(v.string()),
+    color: v.optional(v.string()),
+    icon: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const updates: { name?: string; color?: string; icon?: string } = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.color !== undefined) updates.color = args.color;
+    if (args.icon !== undefined) updates.icon = args.icon;
+
+    await ctx.db.patch(args.folderId, updates);
   },
 });
 
@@ -112,5 +133,43 @@ export const moveFileToFolder = mutation({
     await ctx.db.patch(args.fileId, {
       folderId: args.folderId,
     });
+  },
+});
+
+// Create a folder from two files (when dropping file on file)
+export const createFolderFromFiles = mutation({
+  args: {
+    spaceId: v.id("spaces"),
+    fileId1: v.id("files"),
+    fileId2: v.id("files"),
+    positionX: v.number(),
+    positionY: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getSession(ctx);
+    const userId = user?.consistentUserId;
+
+    const space = await ctx.db.get(args.spaceId);
+    if (!space) throw new Error("Space not found");
+
+    const file1 = await ctx.db.get(args.fileId1);
+    const file2 = await ctx.db.get(args.fileId2);
+
+    if (!file1 || !file2) throw new Error("Files not found");
+
+    // Create folder with a default name
+    const folderId = await ctx.db.insert("folders", {
+      spaceId: args.spaceId,
+      name: "New Folder",
+      positionX: args.positionX,
+      positionY: args.positionY,
+      createdBy: userId,
+    });
+
+    // Move both files into the folder
+    await ctx.db.patch(args.fileId1, { folderId });
+    await ctx.db.patch(args.fileId2, { folderId });
+
+    return folderId;
   },
 });

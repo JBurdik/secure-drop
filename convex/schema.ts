@@ -20,6 +20,8 @@ export default defineSchema({
     positionX: v.number(),
     positionY: v.number(),
     createdBy: v.optional(v.string()),
+    color: v.optional(v.string()), // Folder color (amber, blue, green, red, purple, pink, orange)
+    icon: v.optional(v.string()), // Lucide icon name
   }).index("by_spaceId", ["spaceId"]),
 
   files: defineTable({
